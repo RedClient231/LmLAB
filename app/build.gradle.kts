@@ -20,6 +20,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+        }
     }
 
     buildTypes {
@@ -37,6 +40,12 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    externalNativeBuild {
+        cmake {
+            path = file("../native/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
     packaging {
         resources {
@@ -56,4 +65,5 @@ dependencies {
     implementation(libs.androidx.material3)
     
     implementation(project(":virtual-core"))
+    implementation(project(":gg-bridge"))
 }

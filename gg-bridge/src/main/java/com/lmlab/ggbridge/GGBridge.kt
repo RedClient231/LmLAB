@@ -1,7 +1,6 @@
 package com.lmlab.ggbridge
 
 import android.util.Log
-import com.lmlab.voidguardian.core.VirtualCore
 
 object GGBridge {
 
