@@ -1,25 +1,43 @@
 package com.lmlab.voidguardian.hook
 
+import android.os.Build
 import android.os.IBinder
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
 /**
- * PRODUCTION BINDER HOOK SYSTEM - Phase 1 Core
- * All Android system services are proxied through here.
+ * Binder hook system.
+ *
+ * IMPORTANT:
+ * On Android 10+ / Android 13, replacing framework service binders such as
+ * activity_task breaks normal framework flows including ACTION_OPEN_DOCUMENT.
+ * The crash usually appears as:
+ *
+ * No static method asInterface(Landroid/os/IBinder;)Landroid/app/IActivityTaskManager;
+ * in class Landroid/app/IActivityTaskManager$Stub;
+ *
+ * Therefore modern Android builds must not hook activity_task/package/activity
+ * at app startup. Keep the UI/import path stable and leave real virtualization
+ * hooks for a dedicated, version-aware container implementation.
  */
 object BinderHook {
 
     private val hookMap = mutableMapOf<String, InvocationHandler>()
 
     fun installHooks() {
-        // Hook critical services for virtualization
-        hookService("activity_task", ActivityTaskManagerHandler())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            android.util.Log.w(
+                "VoidGuardian",
+                "Skipping unsafe Binder hooks on Android ${Build.VERSION.SDK_INT}; keeping picker/activity launch stable"
+            )
+            return
+        }
+
         hookService("package", PackageManagerHandler())
         hookService("activity", ActivityManagerNativeHandler())
-        
-        android.util.Log.i("VoidGuardian", "All Binder hooks installed (Phase 1)")
+
+        android.util.Log.i("VoidGuardian", "Legacy Binder hooks installed")
     }
 
     private fun hookService(serviceName: String, handler: InvocationHandler) {
@@ -31,16 +49,15 @@ object BinderHook {
                     arrayOf(IBinder::class.java),
                     DynamicBinderHandler(originalBinder, handler)
                 ) as IBinder
-                
-                // Replace in ServiceManager cache using reflection
+
                 val cacheField = android.os.ServiceManager::class.java.getDeclaredField("sCache")
                 cacheField.isAccessible = true
                 @Suppress("UNCHECKED_CAST")
                 val cache = cacheField.get(null) as MutableMap<String, IBinder>
                 cache[serviceName] = proxiedBinder
             }
-        } catch (e: Exception) {
-            android.util.Log.e("VoidGuardian", "Failed to hook service: $serviceName", e)
+        } catch (t: Throwable) {
+            android.util.Log.e("VoidGuardian", "Failed to hook service: $serviceName", t)
         }
     }
 }
@@ -53,11 +70,12 @@ class DynamicBinderHandler(
     override fun invoke(proxy: Any, method: Method, args: Array<Any?>?): Any? {
         return try {
             if (method.name == "queryLocalInterface") {
-                return handler.invoke(proxy, method, args)
+                handler.invoke(proxy, method, args)
+            } else {
+                method.invoke(originalBinder, *(args ?: emptyArray()))
             }
-            method.invoke(originalBinder, *(args ?: emptyArray()))
-        } catch (e: Exception) {
-            android.util.Log.w("VoidGuardian", "Binder error in ${method.name}", e)
+        } catch (t: Throwable) {
+            android.util.Log.w("VoidGuardian", "Binder error in ${method.name}; delegating failed safely", t)
             null
         }
     }
