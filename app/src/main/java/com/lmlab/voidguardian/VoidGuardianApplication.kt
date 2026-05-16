@@ -7,16 +7,19 @@ class VoidGuardianApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        
-        // Initialize the virtualization core
+
+        try {
+            System.loadLibrary("voidguardian")
+        } catch (e: UnsatisfiedLinkError) {
+            android.util.Log.e("VoidGuardian", "Native library voidguardian could not be loaded", e)
+        }
+
         VirtualCore.getInstance().initialize(this)
-        
-        System.loadLibrary("voidguardian")
     }
 
     companion object {
         init {
-            // Native library will be loaded here
+            // Native library is loaded in onCreate so failures can be logged instead of crashing early.
         }
     }
 }

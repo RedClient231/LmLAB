@@ -1,9 +1,8 @@
 package com.lmlab.voidguardian.core
 
 import android.content.Context
-import com.lmlab.voidguardian.hook.ActivityTaskManagerHandler
 import com.lmlab.voidguardian.hook.BinderHook
-import com.lmlab.voidguardian.mirror.android.os.ServiceManager
+import android.os.Build
 
 class VirtualCore private constructor() {
 
@@ -27,18 +26,13 @@ class VirtualCore private constructor() {
     }
 
     private fun installHooks() {
-        // Critical hooks for modern Android
-        BinderHook.installHooks()
-        
-        // Register our custom ActivityTaskManager handler
-        val interfaces: Array<Class<*>> = arrayOf(android.app.IActivityTaskManager::class.java)
-        val atmBinder = java.lang.reflect.Proxy.newProxyInstance(
-            javaClass.classLoader,
-            interfaces,
-            ActivityTaskManagerHandler()
-        ) as android.os.IBinder
-        
-        ServiceManager.addService("activity_task", atmBinder)
+        try {
+            // Android 13+ blocks most hidden-API/system-service cache mutation paths.
+            // Do not crash app startup if hooks fail; keep UI usable.
+            BinderHook.installHooks()
+        } catch (t: Throwable) {
+            android.util.Log.e("VoidGuardian", "Hook installation failed; continuing without virtualization hooks", t)
+        }
     }
 
     // Phase 1 API - will be expanded
