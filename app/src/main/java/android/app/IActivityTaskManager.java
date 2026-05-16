@@ -1,21 +1,32 @@
-package android.app
+package android.app;
 
-import android.os.IBinder
-import android.os.IInterface
+import android.os.Binder;
+import android.os.IBinder;
+import android.os.IInterface;
+import android.os.Parcel;
 
 /**
  * Stub for hidden Android API android.app.IActivityTaskManager.
  * This interface is not part of the public SDK but is available at runtime.
  */
-interface IActivityTaskManager : IInterface {
+public interface IActivityTaskManager extends IInterface {
 
-    abstract class Stub : Binder(), IActivityTaskManager {
+    abstract class Stub extends Binder implements IActivityTaskManager {
 
-        companion object {
-            @JvmStatic
-            fun asInterface(binder: IBinder): IActivityTaskManager {
-                throw UnsupportedOperationException("Stub - not implemented in compilation stub")
+        private static final String DESCRIPTOR = "android.app.IActivityTaskManager";
+
+        public static IActivityTaskManager asInterface(IBinder obj) {
+            if (obj == null) return null;
+            IInterface iin = obj.queryLocalInterface(DESCRIPTOR);
+            if (iin instanceof IActivityTaskManager) {
+                return (IActivityTaskManager) iin;
             }
+            return null;
+        }
+
+        @Override
+        public IBinder asBinder() {
+            return this;
         }
     }
 }

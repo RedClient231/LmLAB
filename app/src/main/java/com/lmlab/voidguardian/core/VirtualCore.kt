@@ -1,6 +1,7 @@
 package com.lmlab.voidguardian.core
 
 import android.content.Context
+import com.lmlab.voidguardian.hook.ActivityTaskManagerHandler
 import com.lmlab.voidguardian.hook.BinderHook
 import com.lmlab.voidguardian.mirror.android.os.ServiceManager
 
@@ -30,9 +31,10 @@ class VirtualCore private constructor() {
         BinderHook.installHooks()
         
         // Register our custom ActivityTaskManager handler
+        val interfaces: Array<Class<*>> = arrayOf(android.app.IActivityTaskManager::class.java)
         val atmBinder = java.lang.reflect.Proxy.newProxyInstance(
             javaClass.classLoader,
-            arrayOf(android.app.IActivityTaskManager::class.java),
+            interfaces,
             ActivityTaskManagerHandler()
         ) as android.os.IBinder
         
