@@ -14,12 +14,12 @@
 extern "C" JNIEXPORT jboolean JNICALL Java_com_lmlab_ggbridge_GGInjector_nativeShellcodeInject(
         JNIEnv* env, jobject thiz, jint pid, jstring libPath) {
     
-    const char* path = env->GetStringUTFChars(env, libPath, nullptr);
+    const char* path = env->GetStringUTFChars(libPath, nullptr);
     LOGI("Shellcode injection started for PID %d, loading: %s", pid, path);
     
     if (ptrace(PTRACE_ATTACH, pid, 0, 0) != 0) {
         LOGI("Failed to attach to process %d", pid);
-        env->ReleaseStringUTFChars(env, libPath, path);
+        env->ReleaseStringUTFChars(libPath, path);
         return JNI_FALSE;
     }
     
@@ -36,7 +36,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_lmlab_ggbridge_GGInjector_nativeS
     LOGI("GameGuardian should now be able to connect to this virtual process.");
     
     ptrace(PTRACE_DETACH, pid, 0, 0);
-    env->ReleaseStringUTFChars(env, libPath, path);
+    env->ReleaseStringUTFChars(libPath, path);
     return JNI_TRUE;
 }
 

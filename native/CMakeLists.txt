@@ -4,7 +4,7 @@ project("voidguardian")
 add_library(voidguardian SHARED
         src/gg_injector.cpp
         src/memory_mapper.cpp
-        src/ptrace_hook.c)
+        src/ptrace_hook.cpp)
 
 find_library(log-lib log)
 
