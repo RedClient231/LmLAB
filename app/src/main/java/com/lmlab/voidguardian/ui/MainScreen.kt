@@ -1,5 +1,6 @@
 package com.lmlab.voidguardian.ui
 
+import android.content.ActivityNotFoundException
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,22 +24,29 @@ fun MainScreen() {
     var status by remember { mutableStateOf("VoidGuardian Virtual Space") }
     var isGGReady by remember { mutableStateOf(false) }
     var virtualApps by remember { mutableStateOf(virtualCore.getInstalledApps()) }
+    var isImporting by remember { mutableStateOf(false) }
 
     val apkPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) {
+            isImporting = false
             status = "APK import cancelled"
             return@rememberLauncherForActivityResult
         }
 
-        virtualCore.installApkFromUri(uri)
+        status = "Importing APK..."
+        val result = virtualCore.installApkFromUri(uri)
+        isImporting = false
+
+        result
             .onSuccess { app ->
                 virtualApps = virtualCore.getInstalledApps()
                 status = "Imported ${app.label} into Virtual Space ✓"
             }
             .onFailure { error ->
-                status = "APK import failed: ${error.message}"
+                val message = error.message ?: error.javaClass.simpleName
+                status = "APK import failed: $message"
                 Toast.makeText(context, status, Toast.LENGTH_LONG).show()
             }
     }
@@ -56,16 +64,40 @@ fun MainScreen() {
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = {
-                    GGBridge.initialize()
-                    TestHarness.runFullTest()
-                    status = "GameGuardian Bridge Activated"
-                    isGGReady = true
+                    runCatching {
+                        GGBridge.initialize()
+                        TestHarness.runFullTest()
+                    }.onSuccess {
+                        status = "GameGuardian Bridge Activated"
+                        isGGReady = true
+                    }.onFailure { error ->
+                        status = "GameGuardian init failed: ${error.message ?: error.javaClass.simpleName}"
+                        Toast.makeText(context, status, Toast.LENGTH_LONG).show()
+                    }
                 }) {
-                    Text("Initialize GameGuardian Bridge")
+                    Text("Initialize GG Bridge")
                 }
 
-                Button(onClick = { apkPicker.launch("application/vnd.android.package-archive") }) {
-                    Text("Import APK")
+                Button(
+                    enabled = !isImporting,
+                    onClick = {
+                        runCatching {
+                            isImporting = true
+                            // Some Android 13 file managers do not expose APKs for only
+                            // application/vnd.android.package-archive, so include */* fallback.
+                            apkPicker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*"))
+                        }.onFailure { error ->
+                            isImporting = false
+                            val message = when (error) {
+                                is ActivityNotFoundException -> "No file picker found on this device"
+                                else -> error.message ?: error.javaClass.simpleName
+                            }
+                            status = "Cannot open APK picker: $message"
+                            Toast.makeText(context, status, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                ) {
+                    Text(if (isImporting) "Importing..." else "Import APK")
                 }
             }
 
@@ -110,11 +142,11 @@ fun MainScreen() {
                                     Text(app.packageName, style = MaterialTheme.typography.bodySmall)
                                 }
                                 Button(onClick = {
-                                    val launched = virtualCore.launchVirtualApp(app)
-                                    status = if (launched) {
+                                    val opened = virtualCore.launchVirtualApp(app)
+                                    status = if (opened) {
                                         "Opened ${app.label}"
                                     } else {
-                                        "${app.label} is imported, but virtual execution is not implemented"
+                                        "${app.label} is imported. Full virtual launch is not implemented yet."
                                     }
                                 }) {
                                     Text("Open")
