@@ -14,12 +14,8 @@ class VoidGuardianApplication : Application() {
             android.util.Log.e("VoidGuardian", "Native library voidguardian could not be loaded", e)
         }
 
+        // Initialize the virtualization core after native load has been attempted.
+        // Startup must remain usable even when hooks/native pieces are unavailable.
         VirtualCore.getInstance().initialize(this)
-    }
-
-    companion object {
-        init {
-            // Native library is loaded in onCreate so failures can be logged instead of crashing early.
-        }
     }
 }
